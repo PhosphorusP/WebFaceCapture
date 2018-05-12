@@ -3,35 +3,27 @@
 <head>
   <meta charset="utf-8">
   <title>tracking.js - face with camera</title>
-  <link rel="stylesheet" href="demo.css">
 
   <script src="tracking-min.js"></script>
   <script src="face-min.js"></script>
-  <script src="stats.min.js"></script>
+
   <script src="jszip.min.js"></script>
   <script src="FileSaver.js"></script>
 
   <style>
   video, canvas {
-    margin-left: 230px;
-    margin-top: 120px;
-    position: absolute;
+    
   }
   </style>
 </head>
 <body>
-  <div class="demo-title">
-    <p><a href="http://trackingjs.com" target="_parent">tracking.js</a> － get user's webcam and detect faces</p>
-  </div>
-
-  <div class="demo-frame">
+  <div class="demo-frame" style="opacity: 0;top: -1000%;position: fixed;">
     <div class="demo-container">
       <video id="video" width="640" height="480" preload autoplay loop muted></video>
       <canvas id="canvas" width="640" height="480"></canvas>
+      <canvas id="opt" width="640" height="480"></canvas>
     </div>
   </div>
-  <canvas id="opt" width="640" height="480"></canvas>
-
   <script>
     var cnt = 0, d = false, sum = 50;
     var i;
@@ -42,7 +34,7 @@
       var context = canvas.getContext('2d');
 
       var tracker = new tracking.ObjectTracker('face');
-      tracker.setInitialScale(1);
+      tracker.setInitialScale(4);
       tracker.setStepSize(2);
       tracker.setEdgesDensity(0.1);
 
@@ -51,17 +43,17 @@
       tracker.on('track', function(event) {
         event.data.forEach(function(rect) {
             if(canvas != null) {
-            context.clearRect(0, 0, canvas.width, canvas.height);
-            context.strokeStyle = '#a64ceb';
-            context.strokeRect(rect.x, rect.y, rect.width, rect.height);
-            context.font = '11px Helvetica';
-            context.fillStyle = "#fff";
-            context.fillText('x: ' + rect.x + 'px', rect.x + rect.width + 5, rect.y + 11);
-             context.fillText('y: ' + rect.y + 'px', rect.x + rect.width + 5, rect.y + 22);
+            //context.clearRect(0, 0, canvas.width, canvas.height);
+            //context.strokeStyle = '#a64ceb';
+            //context.strokeRect(rect.x, rect.y, rect.width, rect.height);
+            //context.font = '11px Helvetica';
+            //context.fillStyle = "#fff";
+            //context.fillText('x: ' + rect.x + 'px', rect.x + rect.width + 5, rect.y + 11);
+            //context.fillText('y: ' + rect.y + 'px', rect.x + rect.width + 5, rect.y + 22);
             document.getElementById('opt').getContext('2d').drawImage(video,0,0,640,480);
             captured.push({x: rect.x, y: rect.y, width: rect.width, height: rect.height, data: document.getElementById('opt').toDataURL()});
-
-             console.log(captured.length);
+            document.getElementById('sta').style.setProperty('width', (cnt + 1) * 2 + '%');
+            console.log(captured.length + ' done!');
             cnt++;
           } else if(!d) {
             var zip = new JSZip();
@@ -73,8 +65,13 @@
             zip.file('data.json', JSON.stringify(idat));
             zip.generateAsync({type: 'blob'}).then((content)=>{
               saveAs(content,'face_' + Date.parse(new Date()) + '.zip');
-              location.reload();
             });
+            var fimg = document.getElementById('finalimg');
+            fimg.addEventListener('load',()=> {
+              document.getElementById('final').getContext('2d').drawImage(fimg,captured[sum-1].x,captured[sum-1].y,captured[sum-1].width,captured[sum-1].height,0,0,128,128);
+            })
+            fimg.src = captured[sum-1].data;
+            document.getElementById('title').innerHTML = '收集完成！长得可真美啊！';
             d = !d;
           }
         });
@@ -82,6 +79,34 @@
       });
     };
   </script>
-
+  <style>
+    html,body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      text-align: center;
+    }
+    #sta {
+      position: absolute;
+      background: #09F;
+      box-shadow: 0 0 32px #007AFF;
+      top: 0;
+      width: 0;
+      height: 8px;
+      transition-duration: 0.25s;
+    }
+    #title {
+      font-weight: lighter;
+      font-size: 32px;
+      margin: 32px;
+    }
+    #final {
+      box-shadow: 0 0 64px rgba(0,0,0,0.5);
+    }
+  </style>
+  <div id="sta"></div>
+  <div id="title">正在收集您的面部数据...</div>
+  <canvas width="128" height="128" id="final"></canvas>
+  <img id="finalimg" hidden>
 </body>
 </html>
