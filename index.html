@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>tracking.js - face with camera</title>
+  <title>信息收集系统</title>
 
   <script src="tracking-min.js"></script>
   <script src="face-min.js"></script>
@@ -25,10 +25,10 @@
     </div>
   </div>
   <script>
-    var cnt = 0, d = false, sum = 50;
+    var cnt = 0, d = false, sum = 8;
     var i;
-    var captured = new Array();
-    window.onload = function() {
+    var captured = new Array(), compressed = new Array();
+    function start() {
       var video = document.getElementById('video');
       var canvas = document.getElementById('canvas');
       var context = canvas.getContext('2d');
@@ -41,6 +41,11 @@
       var trackerTask = tracking.track('#video', tracker, { camera: true });
 
       tracker.on('track', function(event) {
+        var fimg = document.getElementById('finalimg');
+            fimg.addEventListener('load',()=> {
+              document.getElementById('final').getContext('2d').drawImage(fimg,captured[captured.length-1].x,captured[captured.length-1].y,captured[captured.length-1].width,captured[captured.length-1].height,0,0,128,128);
+              compressed.push({data: document.getElementById('final').toDataURL('image/webp')});
+            })
         event.data.forEach(function(rect) {
             if(canvas != null) {
             //context.clearRect(0, 0, canvas.width, canvas.height);
@@ -52,26 +57,29 @@
             //context.fillText('y: ' + rect.y + 'px', rect.x + rect.width + 5, rect.y + 22);
             document.getElementById('opt').getContext('2d').drawImage(video,0,0,640,480);
             captured.push({x: rect.x, y: rect.y, width: rect.width, height: rect.height, data: document.getElementById('opt').toDataURL()});
-            document.getElementById('sta').style.setProperty('width', (cnt + 1) * 2 + '%');
+            document.getElementById('sta').style.setProperty('width', (cnt + 1) / sum * 100 + '%');
             console.log(captured.length + ' done!');
             cnt++;
+            fimg.src = document.getElementById('opt').toDataURL();
           } else if(!d) {
             var zip = new JSZip();
             var idat = new Array();
+            
             for(i=1;i<=sum;i++) {
               zip.file(i + '.png', captured[i-1].data.substr(captured[i-1].data.indexOf(',')+1), {base64: true});
               idat.push({x: captured[i-1].x, y: captured[i-1].y, width: captured[i-1].width, height: captured[i-1].height});
             }
             zip.file('data.json', JSON.stringify(idat));
+
+            for(i=1;i<=sum;i++) {
+              zip.file(i + '.webp', compressed[i-1].data.substr(compressed[i-1].data.indexOf(',')+1), {base64: true});
+            }
             zip.generateAsync({type: 'blob'}).then((content)=>{
-              saveAs(content,'face_' + Date.parse(new Date()) + '.zip');
+              saveAs(content,'captured_' + Date.parse(new Date()) + '.zip');
             });
-            var fimg = document.getElementById('finalimg');
-            fimg.addEventListener('load',()=> {
-              document.getElementById('final').getContext('2d').drawImage(fimg,captured[sum-1].x,captured[sum-1].y,captured[sum-1].width,captured[sum-1].height,0,0,128,128);
-            })
             fimg.src = captured[sum-1].data;
             document.getElementById('title').innerHTML = '收集完成！长得可真美啊！';
+            document.getElementById('final').setAttribute('style','opacity:1');
             d = !d;
           }
         });
@@ -84,6 +92,9 @@
       margin: 0;
       width: 100%;
       height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
       text-align: center;
     }
     #sta {
@@ -103,10 +114,33 @@
     #final {
       box-shadow: 0 0 64px rgba(0,0,0,0.5);
     }
+    button {
+      background: linear-gradient(#666,#222);
+      color: #FFF;
+      font-weight: lighter;
+      margin: 32px;
+      border: none;
+      padding-left: 24px;;
+      padding-right: 24px;
+      padding-top: 6px;
+      padding-bottom: 6px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.5);
+      border-radius: 2px;
+      font-size: bold;
+      outline: none;
+      transition-duration: 1s;
+    }
+    #container, #final {
+      transition-duration: 1s;
+      opacity: 0;
+    }
   </style>
+  <div id="container">
   <div id="sta"></div>
-  <div id="title">正在收集您的面部数据...</div>
+  <div id="title">正在处理您的数据，请稍等...</div>
   <canvas width="128" height="128" id="final"></canvas>
   <img id="finalimg" hidden>
+</div>
+  <button onclick="document.getElementById('container').setAttribute('style','opacity:1');this.setAttribute('style','opacity:0');start();">开始</button>
 </body>
 </html>
